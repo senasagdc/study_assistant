@@ -1,0 +1,16 @@
+# Sanal ortam
+.venv/
+
+# Gizli bilgiler (API anahtarı)
+.env
+
+# Veri: ders PDF'leri, fiş fotoğrafları, üretilen JSON ve veritabanları
+data/
+
+# Python artıkları
+__pycache__/
+*.pyc
+
+# Mac ve Jupyter artıkları
+.DS_Store
+.ipynb_checkpoints/
