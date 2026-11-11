@@ -34,7 +34,7 @@
 ## Katmanlar
 1. PDF → sayfa metinleri → chapter → JSON (PyMuPDF). TAMAM.
 2. Gemini ile soru JSON üretimi. NEREDEYSE TAMAM: prompt dosyası, `core/llm.py`, schema doğrulama, üretim komutu çalışıyor. Eksik: geçersiz JSON için modele düzeltme retry'ı yok (şimdilik yalnızca fazladan virgül temizleme).
-3. Terminal quiz: cevapları sırayla al, cevaptan sonra açıklamayı göster, sonuç ver. Burada “gerçekten faydalı mı?” değerlendirmesi yapılır. SIRADA.
+3. Terminal quiz: TAMAM. `study_tool/quiz.py` soru JSON'unu doğrular, cevapları sırayla alır, her cevaptan sonra doğru şık, açıklama ve kaynak sayfaları gösterir; sonunda puan verir. Küçük harf, geçersiz giriş ve Q ile çıkış desteklenir. Kullanıcı 5 soruluk quiz'i çalıştırdı; 2 doğru / 3 yanlış ve %40 sonucu doğru hesaplandı. Sonuçlar henüz kaydedilmez.
 4. SQLite ile soru/cevap geçmişi, yanlış takibi ve Leitner tekrar zamanlaması.
 5. Streamlit arayüzü, zamanı gelen tekrarlar ve konu bazlı zayıf nokta raporu.
 6. Bonus: embedding ile kavramın slaytta geçtiği yeri arama. Şimdilik yapılmayacak.
@@ -42,9 +42,15 @@
 ## Çalışma kuralları
 - Kodun çoğunu asistan yazar; kullanıcı çalıştırıp sonucu getirir. Dosya yazabilen araç da ne yaptığını açıklamalı; kullanıcı anlamadan büyük değişiklik yapılmamalı.
 - Önce kısa plan, sonra kod. Her kod parçasından sonra ne yaptığı, neden bu yaklaşımın seçildiği ve alternatif kısaca açıklanır.
+- Kod eklenmeden önce ne yapacağı ve nedeni açıklanır.
+- Her adım sonunda asistan PROJECT.md'yi günceller ve ilgili dosyalar için Git commit komutlarını verir; kullanıcıdan ayrıca hatırlatma beklemez.
 - Bir seferde tek küçük adım; kullanıcı sonucu getirmeden sonraki uygulama adımına geçilmez.
 - Yeni kavram ilk geçtiğinde 2–3 cümleyle öğretilir. Türkçe konuşulur; teknik terimler İngilizce kalır.
 - Her yanıtta en fazla bir soru. Gereksiz mimari, teknoloji ve bonus özellik eklenmez.
 - Git gerektiği kadar öğretilir; commit'ten önce `git status --short` ile bakılır, seans sonunda commit alışkanlığı kazandırılır.
 - Anahtarlar .env içinde, .env ve data/ Git dışında. Anahtarlar sohbete yapıştırılmaz. Asistan .env ve data/ içeriğini okumaz veya göndermez.
-- Soru üretme komutu seçilen chapter metnini Gemini API'ye gönderir. Kullanıcı bunu 11 Kasım 2026'da
+- Soru üretme komutu seçilen chapter metnini Gemini API'ye gönderir. Önceki izin kaydı yarım kalmış; yeni API çağrısı öncesinde izin durumu netleştirilmeli. Terminal quiz API kullanmaz.
+
+## Bir sonraki adım
+- SQLite ile kalıcı kayıt katmanına başla: önce soru ve cevap geçmişi için küçük veri modeli ve kayıt fonksiyonlarını açıkla, ardından uygula. Leitner zamanlaması daha sonraki adımda eklenecek.
+- Quiz komutu (proje kökünden): `python -m study_tool.quiz data/QualityManagementWeek5_ch1_questions.json`
