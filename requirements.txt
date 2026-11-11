@@ -10,3 +10,6 @@ pymupdf4llm==2.1
 pymupdf_layout==2.1
 PyYAML==6.0.3
 tabulate==0.10.0
+
+google-genai==3.1.0
+python-dotenv==1.2.4
