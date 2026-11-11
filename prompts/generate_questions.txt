@@ -10,8 +10,7 @@ Mix these styles. Never write all questions in the same style.
 
 1. Scenario-based (MOST IMPORTANT). About half of the questions should be of this type. Write a realistic, detailed situation (3-5 sentences) set in a factory, hospital, warehouse, supply chain, service company, etc. The student must apply or reason about concepts from the text to decide what is happening or what should be done. These must require thinking, not recall. The options should be reasoned choices, not single words.
 
-2. Concept questions. Examples: "What is X?", "What is the difference between X and Y?", or a short statement describing a concept where the options are candidate terms or explanations.
-
+2. Concept questions. Examples: "What is X?", "What is the difference between X and Y?", or a short statement describing a concept where the options are candidate terms or explanations. Also use some of these variants: "Which of the following statements is NOT true about X?"; a 1-2 sentence situation where the student must identify which concept is described; a question that separates two commonly confused concepts; "When is X most appropriate to use?".
 3. Calculation questions (IMPORTANT). If the chapter contains formulas or numeric examples, include at least one direct mathematical problem solved with a formula from the text. Rules: give every number the student needs in the question; compute the correct answer carefully; options must be numeric with the same units and rounding; wrong options should come from typical mistakes (wrong formula, skipped step). If the chapter has no formulas or numeric examples, do NOT invent any; use the other styles instead.
 
 4. Slide example questions. If the slides contain a worked example or practice problem, turn at least one into a question, keeping its numbers and logic. If there are none, skip this style.
