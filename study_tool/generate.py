@@ -3,7 +3,7 @@ import re
 import sys
 from pathlib import Path
 
-from study_tool.schema import validate_question
+from study_tool.question_bank import append_questions, load_bank
 
 PROMPT_PATH = Path("prompts/generate_questions.txt")
 
@@ -50,10 +50,19 @@ def main():
     chapter_no = int(sys.argv[2])
     n_questions = int(sys.argv[3])
 
-    from core.llm import generate_text  # anahtar gerektirdiği için burada
-
     pages = load_chapter(json_path, chapter_no)
+    allowed = {p["page"] for p in pages}
+    stem = f"{json_path.stem}_ch{chapter_no}"
+    out = json_path.parent / f"{stem}_questions.json"
+    try:
+        existing = load_bank(out, allowed)
+    except (OSError, ValueError) as e:
+        print("Soru bankası okunamadı:", e)
+        return
+    print(f"Mevcut soru bankası: {len(existing)} soru")
     prompt = build_prompt(pages, n_questions)
+
+    from core.llm import generate_text  # anahtar gerektirdiği için burada
 
     print("Chapter metni Gemini API'ye gönderiliyor...")
     raw = generate_text(prompt)
@@ -61,8 +70,7 @@ def main():
         print("Model boş cevap döndürdü.")
         return
 
-    stem = f"{json_path.stem}_ch{chapter_no}"
-    raw_path = Path("data") / f"{stem}_raw.txt"
+    raw_path = json_path.parent / f"{stem}_raw.txt"
     raw_path.write_text(raw, encoding="utf-8")
     print("Ham cevap kaydedildi:", raw_path)
 
@@ -72,19 +80,16 @@ def main():
         print("JSON okunamadı:", e)
         return
 
-    allowed = {p["page"] for p in pages}
-    valid = []
-    for i, q in enumerate(questions, start=1):
-        errors = validate_question(q, allowed)
-        if errors:
-            print(f"Soru {i}: GEÇERSİZ -> {errors}")
-        else:
-            valid.append(q)
-
-    out = Path("data") / f"{stem}_questions.json"
-    out.write_text(json.dumps(valid, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"İstenen: {n_questions} | gelen: {len(questions)} | geçerli: {len(valid)}")
-    print("Geçerli sorular kaydedildi:", out)
+    try:
+        report = append_questions(out, questions, allowed)
+    except (OSError, ValueError) as e:
+        print("Soru bankası kaydedilemedi:", e)
+        return
+    print(f"İstenen: {n_questions} | gelen: {len(questions)}")
+    print(f"Önceki: {report['existing']} | Eklenen: {report['added']} | "
+          f"Geçersiz: {report['invalid']} | Tekrar: {report['duplicate']} | "
+          f"Toplam: {report['total']}")
+    print("Soru bankası:", out)
 
 
 if __name__ == "__main__":

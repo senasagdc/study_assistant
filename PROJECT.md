@@ -29,7 +29,9 @@
 - Her soru: id, type ("mcq"), question, options, correct_answer, explanation, topic, source_pages (orijinal PDF'in 1 tabanlı sayfa numaraları).
 - Sorular verilen metne dayanmalı; kaynakta bulunmayan bilgi gerektirmemeli.
 - JSON schema doğrulaması yalnızca biçimi ve alanları kontrol eder; sorunun doğruluğunu, cevap anahtarını veya kalitesini garanti etmez. Üretilen sorular kullanıcı tarafından PDF ile karşılaştırılır. Hesaplama sorularında cevap anahtarı hatası gerçek bir risk (ilk denemede eşik 490 iken açıklamada 500 kullanılmış, cevap yanlış işaretlenmişti).
-- Soru geçmişine göre tekrar önleme, kalıcı kayıt eklendiğinde ele alınacak; farklı çalıştırmalar arasında benzersizlik garantisi yok.
+- Her PDF/chapter için tek `_questions.json` bankası kullanılır; yeni üretim geçerli ve yeni soruları bu listeye ekler, eskileri değiştirmez. Soru metninde case ve whitespace farkları yok sayılarak önceki banka ve aynı üretim içinde tekrar kontrolü yapılır. Anlamsal benzerlik ve cevap doğruluğu denetlenmez. Yeni kabul edilen sorulara UUID atanır; eski ID'ler korunur.
+- Mevcut banka bozuksa veya ID'ler çakışıyorsa işlem durur. Yazma geçici dosya + atomic replace ile yapılır. Bu, eşzamanlı birden fazla üretimin güncellemelerini birleştirmez; şimdilik üretimler sırayla çalıştırılmalı.
+- Uzun vadeli hedef: PDF, chapter, üretim ve sorular ilişkili tutulacak; her haftanın soruları ayrı seçilebilecek ve birden fazla haftadan mixed/final exam hazırlanabilecek. Ayrı haftalar için ayrı SQL tabloları yerine ilişkili ortak tablolar kullanılacak. Mevcut SQLite prototipi bu modele henüz uyarlanmadı.
 
 ## Katmanlar
 1. PDF → sayfa metinleri → chapter → JSON (PyMuPDF). TAMAM.
@@ -52,5 +54,6 @@
 - Soru üretme komutu seçilen chapter metnini Gemini API'ye gönderir. Önceki izin kaydı yarım kalmış; yeni API çağrısı öncesinde izin durumu netleştirilmeli. Terminal quiz API kullanmaz.
 
 ## Bir sonraki adım
-- Kullanıcı storage modülünün import kontrolünü çalıştırdıktan sonra terminal quiz'i SQLite kayıt fonksiyonlarına bağla. Her cevabı anında kaydet; Q ile çıkıldığında önceki cevaplar korunsun. Leitner zamanlaması daha sonraki adımda eklenecek.
+- JSON bankasına ekleme davranışı uygulandı: `study_tool/question_bank.py`, üretim entegrasyonu, 4 otomatik test. Schema şık sırasından bağımsız A–D anahtarlarını kabul eder ve pozitif sayfa numarası ister. Mevcut kullanıcı verileri okunmadı; API çağrısı yapılmadı.
+- Kullanıcı `python -m unittest discover -s tests -v` ile kontrolleri çalıştıracak. Sonraki uygulama: SQLite modelini PDF/chapter/üretim ilişkilerine göre düzenle ve mevcut JSON bankasını eski ID'leri koruyarak aktar. Dosya taşınmasına dayanıklı PDF kimliği ve JSON/SQLite tutarlılığı tasarlanmalı. Sonrasında quiz cevaplarını bağla; mixed/final exam seçimi ve Leitner daha sonra.
 - Quiz komutu (proje kökünden): `python -m study_tool.quiz data/QualityManagementWeek5_ch1_questions.json`

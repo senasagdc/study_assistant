@@ -25,7 +25,7 @@ def validate_question(q, allowed_pages=None):
             errors.append(f"{field} boş olmayan bir metin olmalı")
 
     opts = q["options"]
-    if not isinstance(opts, dict) or list(opts.keys()) != OPTION_KEYS:
+    if not isinstance(opts, dict) or set(opts.keys()) != set(OPTION_KEYS):
         errors.append("options tam olarak A, B, C, D anahtarlarına sahip olmalı")
     elif not all(isinstance(v, str) and v.strip() for v in opts.values()):
         errors.append("Her şık boş olmayan bir metin olmalı")
@@ -37,7 +37,7 @@ def validate_question(q, allowed_pages=None):
 
     pages = q["source_pages"]
     if (not isinstance(pages, list) or not pages
-            or not all(isinstance(p, int) and not isinstance(p, bool) for p in pages)):
+            or not all(isinstance(p, int) and not isinstance(p, bool) and p >= 1 for p in pages)):
         errors.append("source_pages boş olmayan bir tam sayı listesi olmalı")
     elif allowed_pages is not None and not all(p in allowed_pages for p in pages):
         errors.append("source_pages chapter sayfaları dışında bir sayfa içeriyor")
