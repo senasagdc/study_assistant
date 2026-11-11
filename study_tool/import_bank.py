@@ -1,0 +1,155 @@
+"""Mevcut bir chapter soru JSON'unu SQLite'a kayıpsız aktarır."""
+
+import argparse
+import hashlib
+import json
+import sqlite3
+from pathlib import Path
+
+import pymupdf
+
+from study_tool.question_bank import load_bank, question_key
+from study_tool.storage import DEFAULT_DB_PATH, connect_db
+
+
+def prepare_import(pdf_path, extracted_path, chapter_no, questions_path):
+    """Kaynakları doğrular; database'e dokunmadan aktarım verisini hazırlar."""
+    pdf_path, extracted_path, questions_path = map(
+        Path, (pdf_path, extracted_path, questions_path)
+    )
+    if not questions_path.is_file():
+        raise ValueError(f"Soru dosyası bulunamadı: {questions_path}")
+    data = json.loads(extracted_path.read_text(encoding="utf-8"))
+    matches = [c for c in data["chapters"] if c["chapter"] == chapter_no]
+    if len(matches) != 1:
+        raise ValueError("Chapter numarası tam bir chapter ile eşleşmeli.")
+    pages = matches[0]["pages"]
+    if not pages:
+        raise ValueError("Chapter boş olamaz.")
+    numbers = [p["page"] for p in pages]
+    if not all(type(n) is int and n > 0 for n in numbers):
+        raise ValueError("Sayfa numaraları pozitif tam sayı olmalı.")
+    if numbers != list(range(numbers[0], numbers[-1] + 1)):
+        raise ValueError("Chapter sayfaları sıralı ve kesintisiz olmalı.")
+
+    # Hash ile metin kontrolü aynı dosya içeriği üzerinde yapılır.
+    pdf_bytes = pdf_path.read_bytes()
+    with pymupdf.open(stream=pdf_bytes, filetype="pdf") as pdf:
+        for page in pages:
+            number = page["page"]
+            if number > len(pdf):
+                raise ValueError(f"PDF içinde sayfa {number} yok.")
+            actual = " ".join(pdf[number - 1].get_text().split())
+            expected = " ".join(page["text"].split())
+            if actual != expected:
+                raise ValueError(f"Sayfa {number}: PDF ve çıkarılmış metin eşleşmiyor.")
+    questions = load_bank(questions_path, set(numbers))
+    if not questions:
+        raise ValueError("Soru bankası boş; aktarılacak soru yok.")
+    return dict(
+        pdf_hash=hashlib.sha256(pdf_bytes).hexdigest(),
+        filename=pdf_path.name, chapter_no=chapter_no,
+        start_page=numbers[0], end_page=numbers[-1], questions=questions,
+    )
+
+
+def import_questions(connection, prepared):
+    """Tek transaction ile ekler; çakışmada tüm aktarımı geri alır."""
+    report = dict(added=0, unchanged=0, duplicate=0)
+    with connection:
+        connection.execute("BEGIN IMMEDIATE")
+        connection.execute(
+            "INSERT INTO documents (content_hash, filename) VALUES (?, ?) "
+            "ON CONFLICT(content_hash) DO NOTHING",
+            (prepared["pdf_hash"], prepared["filename"]),
+        )
+        document_id = connection.execute(
+            "SELECT id FROM documents WHERE content_hash = ?", (prepared["pdf_hash"],)
+        ).fetchone()[0]
+        connection.execute(
+            "INSERT INTO chapters (document_id, chapter_no, start_page, end_page) "
+            "VALUES (?, ?, ?, ?) ON CONFLICT(document_id, chapter_no) DO NOTHING",
+            (document_id, prepared["chapter_no"], prepared["start_page"], prepared["end_page"]),
+        )
+        chapter_id, start, end = connection.execute(
+            "SELECT id, start_page, end_page FROM chapters WHERE document_id = ? AND chapter_no = ?",
+            (document_id, prepared["chapter_no"]),
+        ).fetchone()
+        if (start, end) != (prepared["start_page"], prepared["end_page"]):
+            raise ValueError("Kayıtlı chapter sayfa aralığı farklı; aktarım geri alındı.")
+
+        existing = {}
+        keys = set()
+        rows = connection.execute(
+            "SELECT q.original_id, v.question_json FROM bank_questions q "
+            "JOIN question_versions v ON v.question_id = q.id WHERE q.chapter_id = ? "
+            "AND v.version_no = (SELECT MAX(version_no) FROM question_versions WHERE question_id = q.id)",
+            (chapter_id,),
+        )
+        for original_id, content in rows:
+            question = json.loads(content)
+            existing[original_id] = question
+            keys.add(question_key(question))
+
+        generation_id = None
+        for question in prepared["questions"]:
+            original_id = question["id"]
+            if original_id in existing:
+                if existing[original_id] != question:
+                    raise ValueError(f"ID {original_id}: kayıtlı içerik farklı; aktarım geri alındı.")
+                report["unchanged"] += 1
+                continue
+            key = question_key(question)
+            if key in keys:
+                report["duplicate"] += 1
+                continue
+            if generation_id is None:
+                generation_id = connection.execute(
+                    "INSERT INTO generations (chapter_id, kind) VALUES (?, 'import')",
+                    (chapter_id,),
+                ).lastrowid
+            question_id = connection.execute(
+                "INSERT INTO bank_questions (chapter_id, original_id, generation_id) VALUES (?, ?, ?)",
+                (chapter_id, original_id, generation_id),
+            ).lastrowid
+            connection.execute(
+                "INSERT INTO question_versions (question_id, version_no, question_json, change_reason) "
+                "VALUES (?, 1, ?, 'Initial JSON import')",
+                (question_id, json.dumps(question, ensure_ascii=False, sort_keys=True)),
+            )
+            existing[original_id] = question
+            keys.add(key)
+            report["added"] += 1
+        report["chapter_id"] = chapter_id
+        report["total"] = connection.execute(
+            "SELECT COUNT(*) FROM bank_questions WHERE chapter_id = ?", (chapter_id,)
+        ).fetchone()[0]
+    return report
+
+
+def main():
+    parser = argparse.ArgumentParser(description="PDF/chapter soru bankasını SQLite'a aktar.")
+    parser.add_argument("pdf", type=Path)
+    parser.add_argument("extracted_json", type=Path)
+    parser.add_argument("chapter", type=int)
+    parser.add_argument("questions_json", type=Path)
+    parser.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
+    args = parser.parse_args()
+    connection = None
+    try:
+        prepared = prepare_import(args.pdf, args.extracted_json, args.chapter, args.questions_json)
+        connection = connect_db(args.db)
+        report = import_questions(connection, prepared)
+    except (OSError, ValueError, KeyError, TypeError, sqlite3.Error, RuntimeError) as error:
+        parser.exit(1, f"Aktarım başarısız: {error}\n")
+    finally:
+        if connection is not None:
+            connection.close()
+    print(f"Eklenen: {report['added']} | Zaten kayıtlı: {report['unchanged']} | "
+          f"Tekrar metin: {report['duplicate']} | Chapter toplamı: {report['total']}")
+    print(f"Database: {args.db.resolve()} | Chapter database ID: {report['chapter_id']}")
+    print("Kaynak PDF ve JSON dosyaları değiştirilmedi. API kullanılmadı.")
+
+
+if __name__ == "__main__":
+    main()
