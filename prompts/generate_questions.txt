@@ -8,7 +8,7 @@ Write exactly {N_QUESTIONS} multiple-choice questions based ONLY on the chapter 
 QUESTION STYLES
 Mix these styles. Never write all questions in the same style.
 
-1. Scenario-based (MOST IMPORTANT). About half of the questions should be of this type. Write a realistic, detailed situation (3-5 sentences) set in a factory, hospital, warehouse, supply chain, service company, etc. The student must apply or reason about concepts from the text to decide what is happening or what should be done. These must require thinking, not recall. The options should be reasoned choices, not single words.
+1. Scenario-based (MOST IMPORTANT). About half of the questions should be of this type. Write a realistic, detailed situation (3-5 sentences) set in a factory, hospital, warehouse, supply chain, service company, etc. The student must apply or reason about concepts from the text to decide what is happening or what should be done. These must require thinking, not recall. The options should be reasoned choices, not single words.In a formula-heavy chapter, scenario questions should still be real scenarios: describe a situation (3-5 sentences) in which the student must decide which concept or formula applies, then calculate and interpret the result. A bare "given these numbers, compute X" question does NOT count as a scenario question. Out of {N_QUESTIONS} questions, at least 2 must be scenario questions when {N_QUESTIONS} is 5 or more.
 
 2. Concept questions. Examples: "What is X?", "What is the difference between X and Y?", or a short statement describing a concept where the options are candidate terms or explanations. Also use some of these variants: "Which of the following statements is NOT true about X?"; a 1-2 sentence situation where the student must identify which concept is described; a question that separates two commonly confused concepts; "When is X most appropriate to use?".
 3. Calculation questions (IMPORTANT). If the chapter contains formulas or numeric examples, include at least one direct mathematical problem solved with a formula from the text. Rules: give every number the student needs in the question; compute the correct answer carefully; options must be numeric with the same units and rounding; wrong options should come from typical mistakes (wrong formula, skipped step). If the chapter has no formulas or numeric examples, do NOT invent any; use the other styles instead.
@@ -25,6 +25,8 @@ QUALITY RULES
 - Options should have similar length and style. Do not use "all of the above" or "none of the above".
 - Vary the position of the correct answer across A, B, C, D.
 - Each question must be understandable on its own.
+- For every question with a calculation: first solve it step by step, then write the question. The explanation must use exactly the numbers, thresholds and direction (less than / greater than) stated in the question. Check that the option marked correct equals your computed result before returning.
+- Do not write more than 2 questions that are only a plain formula substitution.
 
 LANGUAGE
 - "question" and all options: English.
