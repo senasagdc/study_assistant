@@ -6,6 +6,7 @@ from pathlib import Path
 from study_tool.schema import OPTION_KEYS, validate_question
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parents[1] / "data" / "study.db"
+SCHEMA_PATH = Path(__file__).with_name("database_schema.sql")
 
 
 def connect_db(path=DEFAULT_DB_PATH):
@@ -30,6 +31,7 @@ def connect_db(path=DEFAULT_DB_PATH):
             answered_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
         );
     """)
+    connection.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
     return connection
 
 

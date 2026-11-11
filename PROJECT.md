@@ -55,5 +55,12 @@
 
 ## Bir sonraki adım
 - JSON bankasına ekleme davranışı uygulandı: `study_tool/question_bank.py`, üretim entegrasyonu, 4 otomatik test. Schema şık sırasından bağımsız A–D anahtarlarını kabul eder ve pozitif sayfa numarası ister. Mevcut kullanıcı verileri okunmadı; API çağrısı yapılmadı.
-- Kullanıcı `python -m unittest discover -s tests -v` ile kontrolleri çalıştıracak. Sonraki uygulama: SQLite modelini PDF/chapter/üretim ilişkilerine göre düzenle ve mevcut JSON bankasını eski ID'leri koruyarak aktar. Dosya taşınmasına dayanıklı PDF kimliği ve JSON/SQLite tutarlılığı tasarlanmalı. Sonrasında quiz cevaplarını bağla; mixed/final exam seçimi ve Leitner daha sonra.
+- Önceki 4 soru bankası testi kullanıcı tarafından çalıştırıldı ve geçti. Yeni SQLite schema ile toplam 9 test asistan tarafından geçici database'lerde çalıştırıldı ve geçti. Kullanıcı yeni testleri çalıştırdıktan sonra sıradaki adım: PDF hash'i ve chapter sayfa aralığıyla mevcut JSON bankasını SQLite'a aktarmak; eski ID'leri korumak ve tekrar aktarımı güvenli yapmak.
 - Quiz komutu (proje kökünden): `python -m study_tool.quiz data/QualityManagementWeek5_ch1_questions.json`
+
+## Kabul edilen SQLite hedefi ve çalışma düzeni
+- Asıl kayıt SQLite olacak: PDF/chapter, üretim, soru, soru sürümü ve kullanıcı cevapları. JSON yalnızca import/export biçimi olacak; geçiş tamamlanana kadar mevcut üretim ve quiz JSON kullanmaya devam ediyor.
+- `study_tool/database_schema.sql` eklendi; `connect_db()` yeni tabloları da oluşturur. Tablolar: documents, chapters, generations, bank_questions, question_versions, answer_attempts. Eski questions/attempts prototipi silinmez ve henüz taşınmaz.
+- documents.content_hash PDF kimliği içindir; hash hesaplama ve belge kayıt fonksiyonları henüz yok. bank_questions.original_id eski JSON ID'sini chapter içinde korur. Cevaplar question_versions kaydına bağlanır. Schema tek başına sürümleri değişmez yapmaz; ileride yazılacak kayıt fonksiyonları eski sürümü güncellemek yerine yeni sürüm eklemeli. JSON içerik doğrulaması Python katmanında yapılacak.
+- SQLite bitiş çizgisi: veri modeli → JSON import → üretimin SQLite'a kaydı → quiz cevaplarının kaydı → JSON export ve tarihli yedek/geri yükleme kontrolü. Bilgisayar dışı yedek konumu henüz belirlenmedi. Mixed exam, Leitner ve arayüz bu aşamada eklenmez.
+- Kullanıcı SQLite aşaması bitene kadar açıklamalı uygulamayı yetkilendirdi. Her adım önceden açıklanır; kullanıcı sonucundan önce sonraki uygulamaya geçilmez. SQLite tamamlanınca açıkça DUR: dosyaları ve veri akışını birlikte incele; ardından açıklama → kodu gösterme → kullanıcının uygulaması düzenine dön. Yeni özellik için otomatik kod değişikliği yapma.
