@@ -35,7 +35,7 @@
 1. PDF → sayfa metinleri → chapter → JSON (PyMuPDF). TAMAM.
 2. Gemini ile soru JSON üretimi. NEREDEYSE TAMAM: prompt dosyası, `core/llm.py`, schema doğrulama, üretim komutu çalışıyor. Eksik: geçersiz JSON için modele düzeltme retry'ı yok (şimdilik yalnızca fazladan virgül temizleme).
 3. Terminal quiz: TAMAM. `study_tool/quiz.py` soru JSON'unu doğrular, cevapları sırayla alır, her cevaptan sonra doğru şık, açıklama ve kaynak sayfaları gösterir; sonunda puan verir. Küçük harf, geçersiz giriş ve Q ile çıkış desteklenir. Kullanıcı 5 soruluk quiz'i çalıştırdı; 2 doğru / 3 yanlış ve %40 sonucu doğru hesaplandı. Sonuçlar henüz kaydedilmez.
-4. SQLite ile soru/cevap geçmişi, yanlış takibi ve Leitner tekrar zamanlaması.
+4. SQLite ile soru/cevap geçmişi: ALTYAPI EKLENDİ. `study_tool/storage.py`: `connect_db`, `save_question`, `save_attempt`. Varsayılan database `data/study.db`; questions ve attempts tabloları. Aynı kaynak yolu ve aynı soru içeriği yeniden kaydedilmez; değişen içerik ayrı kayıt olur. Cevaplar doğruluk ve UTC zamanıyla ayrı ayrı kaydedilir. Geçici database ile kalıcılık, tekrar önleme ve doğru/yanlış cevap kontrolleri geçti. Quiz henüz bu katmana bağlı değil. Yanlış takibi ve Leitner zamanlaması bekliyor.
 5. Streamlit arayüzü, zamanı gelen tekrarlar ve konu bazlı zayıf nokta raporu.
 6. Bonus: embedding ile kavramın slaytta geçtiği yeri arama. Şimdilik yapılmayacak.
 
@@ -52,5 +52,5 @@
 - Soru üretme komutu seçilen chapter metnini Gemini API'ye gönderir. Önceki izin kaydı yarım kalmış; yeni API çağrısı öncesinde izin durumu netleştirilmeli. Terminal quiz API kullanmaz.
 
 ## Bir sonraki adım
-- SQLite ile kalıcı kayıt katmanına başla: önce soru ve cevap geçmişi için küçük veri modeli ve kayıt fonksiyonlarını açıkla, ardından uygula. Leitner zamanlaması daha sonraki adımda eklenecek.
+- Kullanıcı storage modülünün import kontrolünü çalıştırdıktan sonra terminal quiz'i SQLite kayıt fonksiyonlarına bağla. Her cevabı anında kaydet; Q ile çıkıldığında önceki cevaplar korunsun. Leitner zamanlaması daha sonraki adımda eklenecek.
 - Quiz komutu (proje kökünden): `python -m study_tool.quiz data/QualityManagementWeek5_ch1_questions.json`
