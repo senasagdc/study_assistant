@@ -4,6 +4,7 @@ import json
 import sqlite3
 from pathlib import Path
 
+from study_tool.manage import get_user_id
 from study_tool.schema import OPTION_KEYS, validate_question
 from study_tool.storage import DEFAULT_DB_PATH, connect_db
 
@@ -42,10 +43,12 @@ def load_chapter_questions(connection, chapter_id):
     return items
 
 
-def record_answer(connection, version_id, selected_answer):
+def record_answer(connection, version_id, selected_answer, user_id):
     """Cevabı hemen kaydeder; doğruluğu database'deki cevap anahtarından hesaplar."""
     if selected_answer not in OPTION_KEYS:
         raise ValueError("Cevap A, B, C veya D olmalı.")
+    if user_id is None:
+        raise ValueError("Cevap bir kullanıcıya bağlanmalı.")
     row = connection.execute(
         "SELECT question_json FROM question_versions WHERE id = ?", (version_id,)
     ).fetchone()
@@ -54,14 +57,14 @@ def record_answer(connection, version_id, selected_answer):
     is_correct = selected_answer == json.loads(row[0])["correct_answer"]
     with connection:
         connection.execute(
-            "INSERT INTO answer_attempts (question_version_id, selected_answer, is_correct) "
-            "VALUES (?, ?, ?)",
-            (version_id, selected_answer, int(is_correct)),
+            "INSERT INTO answer_attempts (question_version_id, selected_answer, is_correct, user_id) "
+            "VALUES (?, ?, ?, ?)",
+            (version_id, selected_answer, int(is_correct), user_id),
         )
     return is_correct
 
 
-def run_quiz(connection, items):
+def run_quiz(connection, items, user_id):
     """Cevapları alır, her birini kaydeder, geri bildirim gösterir ve sonucu hesaplar."""
     correct = 0
     answered = 0
@@ -84,7 +87,7 @@ def run_quiz(connection, items):
 
         if answer == "Q":
             break
-        is_correct = record_answer(connection, version_id, answer)
+        is_correct = record_answer(connection, version_id, answer, user_id)
         answered += 1
         if is_correct:
             correct += 1
@@ -108,15 +111,17 @@ def main():
     parser = argparse.ArgumentParser(description="Database'deki chapter sorularını terminalde çöz.")
     parser.add_argument("pdf", type=Path, help="Chapter'ın ait olduğu PDF")
     parser.add_argument("chapter", type=int)
+    parser.add_argument("--user", required=True, help="Cevapların kaydedileceği kullanıcı")
     parser.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
     args = parser.parse_args()
     if not args.db.is_file():
         parser.exit(1, f"Database bulunamadı: {args.db}\n")
     connection = connect_db(args.db)
     try:
+        user_id = get_user_id(connection, args.user)
         chapter_id = find_chapter(connection, args.pdf, args.chapter)
         items = load_chapter_questions(connection, chapter_id)
-        run_quiz(connection, items)
+        run_quiz(connection, items, user_id)
     except (OSError, ValueError, sqlite3.Error) as error:
         parser.exit(1, f"Quiz başlatılamadı: {error}\n")
     finally:

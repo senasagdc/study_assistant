@@ -9,7 +9,8 @@ from unittest.mock import patch
 import pymupdf
 
 from study_tool.import_bank import import_questions, prepare_import
-from study_tool.quiz import find_chapter, load_chapter_questions, run_quiz
+from study_tool.manage import add_user
+from study_tool.quiz import find_chapter, load_chapter_questions, record_answer, run_quiz
 from study_tool.storage import connect_db
 
 
@@ -40,16 +41,17 @@ class QuizTests(unittest.TestCase):
         self.db = connect_db(root / "test.db")
         self.addCleanup(self.db.close)
         import_questions(self.db, prepare_import(self.pdf, extracted, 1, bank))
+        self.user_id = add_user(self.db, "Sena")
 
     def play(self, answers):
         items = load_chapter_questions(self.db, find_chapter(self.db, self.pdf, 1))
         with patch("builtins.input", side_effect=answers), redirect_stdout(io.StringIO()):
-            return run_quiz(self.db, items)
+            return run_quiz(self.db, items, self.user_id)
 
     def attempts(self):
         return self.db.execute(
             "SELECT question_version_id, selected_answer, is_correct "
-            "FROM answer_attempts ORDER BY id").fetchall()
+            "FROM answer_attempts WHERE user_id = ? ORDER BY id", (self.user_id,)).fetchall()
 
     def test_each_answer_saved_with_version_and_correctness(self):
         result = self.play(["a", "B"])
@@ -69,6 +71,11 @@ class QuizTests(unittest.TestCase):
                 "VALUES (1, 2, ?, 'Answer key fixed')", (json.dumps(changed),))
         self.play(["B", "Q"])
         self.assertEqual(self.attempts(), [(3, "B", 1)])
+
+    def test_answer_requires_user(self):
+        with self.assertRaisesRegex(ValueError, "kullanıcı"):
+            record_answer(self.db, 1, "A", None)
+        self.assertEqual(self.db.execute("SELECT COUNT(*) FROM answer_attempts").fetchone()[0], 0)
 
     def test_unknown_pdf_rejected(self):
         other = self.pdf.with_name("other.pdf")

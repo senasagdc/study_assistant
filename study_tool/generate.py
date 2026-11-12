@@ -82,7 +82,8 @@ def default_pdf_path(json_path):
     return Path(json_path).parent / source
 
 
-def run_generation(json_path, chapter_no, n_questions, pdf_path=None, db_path=DEFAULT_DB_PATH):
+def run_generation(json_path, chapter_no, n_questions, pdf_path=None, db_path=DEFAULT_DB_PATH,
+                   course=None):
     """Soru üretir; yeni soruları önce JSON bankasına, sonra SQLite'a ekler."""
     json_path = Path(json_path)
     pdf_path = Path(pdf_path) if pdf_path else default_pdf_path(json_path)
@@ -98,9 +99,10 @@ def run_generation(json_path, chapter_no, n_questions, pdf_path=None, db_path=DE
     try:
         # JSON'da olup database'de olmayan eski sorular 'import' olarak eşitlenir;
         # böylece aşağıdaki 'llm' kaydına yalnızca bu üretimin soruları girer.
-        sync = import_questions(connection, dict(chapter, questions=existing))
+        sync = import_questions(connection, dict(chapter, questions=existing), course=course)
         if sync["added"]:
             print(f"Database'de olmayan {sync['added']} eski soru 'import' olarak eşitlendi.")
+        print(f"Ders: {sync['course'] or 'YOK - bağlamak için --course veya manage set-course kullan'}")
 
         from core.llm import MODEL, generate_text  # anahtar gerektirdiği için burada
 
@@ -165,9 +167,11 @@ def main():
     parser.add_argument("--pdf", type=Path,
                         help="Varsayılan: JSON'daki 'source' adıyla aynı klasördeki PDF")
     parser.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
+    parser.add_argument("--course", help="PDF'in bağlanacağı ders (önce manage add-course ile eklenmeli)")
     args = parser.parse_args()
     try:
-        run_generation(args.extracted_json, args.chapter, args.n_questions, args.pdf, args.db)
+        run_generation(args.extracted_json, args.chapter, args.n_questions, args.pdf, args.db,
+                       args.course)
     except (OSError, ValueError, KeyError, TypeError, RuntimeError, sqlite3.Error) as error:
         parser.exit(1, f"Üretim başarısız: {error}\n")
 

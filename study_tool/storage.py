@@ -32,7 +32,33 @@ def connect_db(path=DEFAULT_DB_PATH):
         );
     """)
     connection.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+    migrate(connection)
     return connection
+
+
+# Her migration bir kez çalışır; hangisine kadar gelindiği PRAGMA user_version'da tutulur.
+MIGRATIONS = [
+    # 1: dersler ve kullanıcılar
+    """
+    ALTER TABLE documents ADD COLUMN course_id INTEGER REFERENCES courses(id);
+    ALTER TABLE answer_attempts ADD COLUMN user_id INTEGER REFERENCES users(id);
+    """,
+]
+
+
+def migrate(connection):
+    """Eksik migration'ları sırayla ve her birini tek transaction içinde uygular."""
+    version = connection.execute("PRAGMA user_version").fetchone()[0]
+    for number, script in enumerate(MIGRATIONS[version:], start=version + 1):
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            for statement in filter(str.strip, script.split(";")):
+                connection.execute(statement)
+            connection.execute(f"PRAGMA user_version = {number}")
+            connection.execute("COMMIT")
+        except Exception:
+            connection.execute("ROLLBACK")
+            raise
 
 
 def save_question(connection, question, source_file):

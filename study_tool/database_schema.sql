@@ -1,4 +1,18 @@
 -- Eski questions / attempts prototip tablolarına dokunulmaz.
+-- documents.course_id ve answer_attempts.user_id sütunları storage.py içindeki
+-- migration ile eklenir (mevcut database'ler de aynı yoldan güncellensin diye).
+CREATE TABLE IF NOT EXISTS courses (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE COLLATE NOCASE CHECK (length(trim(name)) > 0),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE COLLATE NOCASE CHECK (length(trim(name)) > 0),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
 CREATE TABLE IF NOT EXISTS documents (
     id INTEGER PRIMARY KEY,
     content_hash TEXT NOT NULL UNIQUE,
