@@ -16,12 +16,47 @@ def pages_to_text(pages):
     return "\n\n".join(f"[Page {p['page']}]\n{p['text']}" for p in pages)
 
 
-def build_prompt(pages, n_questions):
+MAX_EXISTING_CHARS = 300  # prompt'a eklenen her eski sorunun en fazla uzunluğu
+
+
+def existing_summary(questions):
+    """Mevcut soruları modelin tekrar etmemesi için kısa bir listeye çevirir."""
+    if not questions:
+        return "None yet."
+    lines = []
+    for q in questions:
+        text = " ".join(q["question"].split())
+        if len(text) > MAX_EXISTING_CHARS:
+            text = text[:MAX_EXISTING_CHARS] + "..."
+        lines.append(f"- [{q['topic']}] {text}")
+    return "\n".join(lines)
+
+
+def build_prompt(pages, n_questions, existing=()):
     """Prompt şablonundaki boşlukları doldurur."""
     template = PROMPT_PATH.read_text(encoding="utf-8")
     return (template
             .replace("{N_QUESTIONS}", str(n_questions))
+            .replace("{EXISTING_QUESTIONS}", existing_summary(existing))
             .replace("{CHAPTER_TEXT}", pages_to_text(pages)))
+
+
+# JSON'da tek ters bölü ile yazılmış LaTeX (\times, \frac, \beta, \rho) sessizce
+# tab, form feed, backspace veya carriage return karakterine dönüşür.
+def broken_escape_fields(question):
+    """Bozuk LaTeX kaçışı içeren alanların adlarını döndürür."""
+    texts = {"question": question.get("question"), "explanation": question.get("explanation")}
+    options = question.get("options")
+    if isinstance(options, dict):
+        texts.update({f"options.{k}": v for k, v in options.items()})
+    return [name for name, value in texts.items()
+            if isinstance(value, str) and any(c in value for c in "\t\f\b\r")]
+
+
+def _fix_escape(match):
+    """Geçerli JSON kaçışlarını korur; diğer tek ters bölüleri ikiye katlar."""
+    char = match.group(1)
+    return match.group(0) if char in '\\"/bfnrtu' else "\\\\" + char
 
 
 def parse_questions(raw):
@@ -30,10 +65,12 @@ def parse_questions(raw):
     try:
         data = json.loads(text)
     except json.JSONDecodeError:
-        # Modeller bazen son elemandan sonra fazladan virgül bırakır
+        # Modeller bazen son elemandan sonra fazladan virgül bırakır ve
+        # LaTeX ters bölüsünü (\Phi, \mu) JSON için ikiye katlamayı unutur.
         cleaned = re.sub(r",(\s*[}\]])", r"\1", text)
+        cleaned = re.sub(r"\\(.)", _fix_escape, cleaned, flags=re.DOTALL)
         data = json.loads(cleaned)
-        print("Not: JSON'daki fazladan virgüller temizlendi.")
+        print("Not: JSON'daki fazladan virgüller / tek ters bölüler düzeltildi.")
     if not isinstance(data, list):
         raise ValueError("Cevap bir JSON listesi değil")
     return data
@@ -68,7 +105,7 @@ def run_generation(json_path, chapter_no, n_questions, pdf_path=None, db_path=DE
         from core.llm import MODEL, generate_text  # anahtar gerektirdiği için burada
 
         print("Chapter metni Gemini API'ye gönderiliyor...")
-        raw = generate_text(build_prompt(chapter["pages"], n_questions))
+        raw = generate_text(build_prompt(chapter["pages"], n_questions, existing))
         if not raw:
             print("Model boş cevap döndürdü.")
             return None
@@ -84,7 +121,16 @@ def run_generation(json_path, chapter_no, n_questions, pdf_path=None, db_path=DE
             print("JSON okunamadı:", e)
             return None
 
-        report = append_questions(out, questions, allowed)
+        accepted, broken = [], 0
+        for index, question in enumerate(questions, 1):
+            fields = broken_escape_fields(question) if isinstance(question, dict) else []
+            if fields:
+                broken += 1
+                print(f"Soru {index}: GEÇERSİZ -> bozuk LaTeX kaçışı: {', '.join(fields)}")
+            else:
+                accepted.append(question)
+        report = append_questions(out, accepted, allowed)
+        report["invalid"] += broken
         print(f"İstenen: {n_questions} | gelen: {len(questions)}")
         print(f"Önceki: {report['existing']} | Eklenen: {report['added']} | "
               f"Geçersiz: {report['invalid']} | Tekrar: {report['duplicate']} | "

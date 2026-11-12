@@ -4,12 +4,13 @@ import sys
 import tempfile
 import types
 import unittest
+from contextlib import closing
 from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pymupdf
 
-from study_tool.generate import run_generation
+from study_tool.generate import build_prompt, parse_questions, run_generation
 
 
 def sample_question(identifier="q1", text="Which option?"):
@@ -47,7 +48,7 @@ class GenerateTests(unittest.TestCase):
             return run_generation(self.extracted, 1, 2, db_path=self.db_path)
 
     def rows(self, sql):
-        with sqlite3.connect(self.db_path) as connection:
+        with closing(sqlite3.connect(self.db_path)) as connection:
             return connection.execute(sql).fetchall()
 
     def test_new_questions_saved_to_json_and_sqlite_as_llm(self):
@@ -90,6 +91,28 @@ class GenerateTests(unittest.TestCase):
             self.run_with(llm)
         llm.generate_text.assert_not_called()
         self.assertFalse(self.db_path.exists())
+        self.assertFalse(self.bank.exists())
+
+    def test_prompt_lists_existing_questions(self):
+        pages = [dict(page=1, text="Demo chapter")]
+        prompt = build_prompt(pages, 3, [sample_question()])
+        self.assertIn("- [Demo] Which option?", prompt)
+        self.assertNotIn("{EXISTING_QUESTIONS}", prompt)
+        self.assertIn("None yet.", build_prompt(pages, 3, []))
+
+        self.bank.write_text(json.dumps([sample_question()]), encoding="utf-8")
+        llm = self.fake_llm([sample_question("m1", "Second?")])
+        self.run_with(llm)
+        self.assertIn("- [Demo] Which option?", llm.generate_text.call_args.args[0])
+
+    def test_single_backslash_latex_is_repaired_or_rejected(self):
+        raw = r'[{"explanation": "$\Phi(1.5)$ ve $\\mu$ \"x\""}]'
+        self.assertEqual(parse_questions(raw)[0]["explanation"], '$\\Phi(1.5)$ ve $\\mu$ "x"')
+
+        # "\times" tek ters bölüyle gelirse JSON onu TAB + "imes" yapar; soru reddedilir.
+        broken = dict(sample_question("m1", "Second?"), explanation="$2 \times 4$")
+        report = self.run_with(self.fake_llm([broken]))
+        self.assertEqual((report["added"], report["invalid"]), (0, 1))
         self.assertFalse(self.bank.exists())
 
 

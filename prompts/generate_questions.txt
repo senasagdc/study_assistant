@@ -13,12 +13,16 @@ Mix these styles. Never write all questions in the same style.
 2. Concept questions. Examples: "What is X?", "What is the difference between X and Y?", or a short statement describing a concept where the options are candidate terms or explanations. Also use some of these variants: "Which of the following statements is NOT true about X?"; a 1-2 sentence situation where the student must identify which concept is described; a question that separates two commonly confused concepts; "When is X most appropriate to use?".
 3. Calculation questions (IMPORTANT). If the chapter contains formulas or numeric examples, include at least one direct mathematical problem solved with a formula from the text. Rules: give every number the student needs in the question; compute the correct answer carefully; options must be numeric with the same units and rounding; wrong options should come from typical mistakes (wrong formula, skipped step). If the chapter has no formulas or numeric examples, do NOT invent any; use the other styles instead.
 
-4. Slide example questions. If the slides contain a worked example or practice problem, turn at least one into a question, keeping its numbers and logic. If there are none, skip this style.
+4. Do NOT copy the worked examples or practice problems from the slides. You may use the same method, but with a new setting and new numbers, so the student cannot answer by remembering the slide's result.
 
 CONTENT RULES
 - Use only concepts, definitions and formulas that appear in the chapter text. The student must not need outside knowledge to answer. A scenario may use an invented setting, but the knowledge needed to solve it must come from the text.
 - Do not ask about slide logistics, course information, author names, agenda slides or page numbers.
 - If a part of the text looks garbled (for example a broken table), do not base a question on it.
+
+EXISTING QUESTIONS
+The student already has the questions listed below for this chapter. Do not repeat them, even in different words: do not reuse the same situation, the same numbers, or the same tested idea with a new setting. If a topic is already covered, test a different aspect of it, or choose another topic from the chapter.
+{EXISTING_QUESTIONS}
 
 QUALITY RULES
 - Exactly one option is correct; the other three are clearly wrong but plausible.
@@ -30,7 +34,14 @@ QUALITY RULES
 
 LANGUAGE
 - "question" and all options: English.
-- "explanation": Turkish, but keep technical terms in English. Explain why the correct option is correct, why one typical wrong option is wrong, and for calculations show the steps. Mention which slide page the information comes from.
+- "explanation": Turkish, but keep technical terms in English. Explain why the correct option is correct, why one typical wrong option is wrong, and for calculations show the steps. Mention which slide page the information comes from. Start directly with the explanation; do not add a label such as "Türkçe Açıklama:".
+
+MATH FORMAT
+The text will be shown in an interface that renders Markdown with LaTeX math.
+- Write every formula, symbol and calculation step as inline LaTeX between single dollar signs, for example $z = (x - \\mu) / \\sigma$ or $R(t) = e^{-\\lambda t}$.
+- Inside the JSON strings every backslash must be written twice: "\\times", "\\Phi", "\\lambda", "\\frac".
+- Do not use the dollar sign for money; write "USD" instead.
+- Put a space between a word and a following number, symbol or unit.
 
 OUTPUT FORMAT
 Return ONLY a JSON array with exactly {N_QUESTIONS} objects. No markdown, no code fences, no text before or after. Each object has exactly these fields:
