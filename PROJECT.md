@@ -67,7 +67,7 @@ Asıl kayıt SQLite (`data/study.db`). JSON soru bankaları (`data/<pdf>_ch<N>_q
 1. PDF → chapter JSON. TAMAM.
 2. Gemini ile soru üretimi. TAMAM (eksik: geçersiz JSON'da modele düzeltme retry'ı yok).
 3. Terminal quiz. TAMAM, SQLite'tan okur ve cevap kaydeder.
-4. SQLite. KOD TAMAM: veri modeli, import, üretim kaydı, quiz kaydı, dersler/kullanıcılar, JSON export, doğrulanmış yedek. Export ve yedek gerçek database'de henüz çalıştırılmadı; bilgisayar dışı yedek konumu belirlenmedi.
+4. SQLite. TAMAM (12 Kasım): veri modeli, import, üretim kaydı, quiz kaydı, dersler/kullanıcılar, JSON export, doğrulanmış yedek; gerçek database'de doğrulandı. Açık: bilgisayar dışı yedek konumu.
 5. Streamlit arayüzü (slayt yükleme dahil), tekrar kuralı, konu bazlı zayıf nokta raporu.
 6. Bonus: embedding ile kavram arama. Şimdilik yapılmayacak.
 
@@ -92,14 +92,14 @@ Asıl kayıt SQLite (`data/study.db`). JSON soru bankaları (`data/<pdf>_ch<N>_q
 - Mevcut gerçek veri: 1 ders (Quality Management), 1 PDF, 1 chapter, 10 soru, 1 kullanıcı (Sena), 38 cevap.
 
 ## Bir sonraki adım
-DURUM: Ders/kullanıcı yapısı commit edildi (103f2d4). SQLite'ın son adımı kullanıcının tam izniyle asistan tarafından yazıldı ve commit edildi; 36 test Mac'te (asistan, `.venv`, gerçek pymupdf) geçti. GERÇEK DATABASE ÜZERİNDE HENÜZ ÇALIŞTIRILMADI.
+DURUM: Ders/kullanıcı yapısı commit edildi (103f2d4). SQLite'ın son adımı kullanıcının tam izniyle asistan tarafından yazıldı ve commit edildi; 36 test Mac'te (asistan, `.venv`, gerçek pymupdf) geçti. 12 Kasım KULLANICI DOĞRULADI: `backup` → `data/backups/study_2026-11-12_173549.db`, integrity ok, sayılar asılla aynı (answer_attempts 38, bank_questions 10, question_versions 10, generations 2, chapters 1, documents 1, courses 1, users 1; eski prototip tablolar 0). `export_bank` → `data/export_ch1.json`, 10 soru. SQLite AŞAMASI TAMAM.
 - `study_tool/export_bank.py`: PDF (hash) + chapter için her sorunun son sürümünü, eklenme sırasıyla import'un okuduğu JSON listesi olarak yazar. JSON içindeki `id` ile `original_id` uyuşmazsa veya soru schema'dan geçmezse durur. Var olan dosyanın üzerine yazmaz (`os.link` ile atomik). Testler: export → boş DB'ye import → birebir aynı; son sürüm kullanılır; var olan dosya korunur.
 - `study_tool/backup.py`: kaynağı salt okunur (`mode=ro`) açar, `Connection.backup()` ile `data/backups/study_YYYY-MM-DD_HHMMSS.db` yazar; kopyada `PRAGMA integrity_check` = ok ve her tablonun satır sayısı asılla aynı olmalı, değilse kopya silinir. Var olan yedeğin üzerine yazmaz; olmayan database'i oluşturmaz. `--dest` ile başka klasör (ör. iCloud Drive) verilebilir.
 
-Kullanıcının yapacakları (her komut ayrı):
+Doğrulama komutları (yapıldı):
 1. `python -m study_tool.backup` → `integrity_check: ok` ve tablo sayıları (beklenen: courses 1, users 1, documents 1, chapters 1, bank_questions 10, answer_attempts 38).
 2. `python -m study_tool.export_bank data/QualityManagementWeek5.pdf 1 data/export_ch1.json` → "10 soru yazıldı".
-3. (İsteğe bağlı) export'u var olan banka dosyasıyla karşılaştırma: `diff <(python -m json.tool data/export_ch1.json) <(python -m json.tool data/QualityManagementWeek5_ch1_questions.json)` → çıktı yoksa birebir aynı.
+3. (İsteğe bağlı) export'u var olan banka dosyasıyla karşılaştırma: `diff <(python -m json.tool --sort-keys data/export_ch1.json) <(python -m json.tool --sort-keys data/QualityManagementWeek5_ch1_questions.json)` → çıktı yoksa birebir aynı.
 4. Bilgisayar dışı yedek konumu kararı (iCloud Drive / Google Drive klasörü).
 
 Elle geri yükleme (otomatik komut YOK):
@@ -109,7 +109,7 @@ Elle geri yükleme (otomatik komut YOK):
 4. Kontrol: `python -m study_tool.manage list`
 
 Sonra:
-- SQLite aşaması BİTTİ sayılır → DUR ve dosyaları/veri akışını birlikte incele (Çalışma kuralları). Ardından açıklama → kodu gösterme → kullanıcının uygulaması düzeni.
+- ŞU AN: SQLite aşaması BİTTİ → DUR ve dosyaları/veri akışını birlikte incele (Çalışma kuralları). Ardından açıklama → kodu gösterme → kullanıcının uygulaması düzeni.
 - (İsteğe bağlı, API onayıyla) yeni prompt'la gerçek üretim: `python -m study_tool.generate data/QualityManagementWeek5.json 1 5`. Kontrol: slayt örneği kopyası yok, eski sorulara anlamsal benzerlik yok, LaTeX `$...$` içinde ve tutarlı.
 
 ## Sonraya bırakılan kararlar
