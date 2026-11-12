@@ -67,7 +67,7 @@ Asıl kayıt SQLite (`data/study.db`). JSON soru bankaları (`data/<pdf>_ch<N>_q
 1. PDF → chapter JSON. TAMAM.
 2. Gemini ile soru üretimi. TAMAM (eksik: geçersiz JSON'da modele düzeltme retry'ı yok).
 3. Terminal quiz. TAMAM, SQLite'tan okur ve cevap kaydeder.
-4. SQLite. TAMAM (12 Kasım): veri modeli, import, üretim kaydı, quiz kaydı, dersler/kullanıcılar, JSON export, doğrulanmış yedek; gerçek database'de doğrulandı. Açık: bilgisayar dışı yedek konumu.
+4. SQLite. TAMAM (12 Kasım): veri modeli, import, üretim kaydı, quiz kaydı, dersler/kullanıcılar, JSON export, doğrulanmış yedek; gerçek database'de doğrulandı. Bilgisayar dışı yedek: iCloud Drive (`~/Library/Mobile Documents/com~apple~CloudDocs/ai-tools-backups`, `--dest` ile).
 5. Streamlit arayüzü (slayt yükleme dahil), tekrar kuralı, konu bazlı zayıf nokta raporu.
 6. Bonus: embedding ile kavram arama. Şimdilik yapılmayacak.
 
@@ -100,7 +100,7 @@ Doğrulama komutları (yapıldı):
 1. `python -m study_tool.backup` → `integrity_check: ok` ve tablo sayıları (beklenen: courses 1, users 1, documents 1, chapters 1, bank_questions 10, answer_attempts 38).
 2. `python -m study_tool.export_bank data/QualityManagementWeek5.pdf 1 data/export_ch1.json` → "10 soru yazıldı".
 3. (İsteğe bağlı) export'u var olan banka dosyasıyla karşılaştırma: `diff <(python -m json.tool --sort-keys data/export_ch1.json) <(python -m json.tool --sort-keys data/QualityManagementWeek5_ch1_questions.json)` → çıktı yoksa birebir aynı.
-4. Bilgisayar dışı yedek konumu kararı (iCloud Drive / Google Drive klasörü).
+4. Bilgisayar dışı yedek konumu: KARAR iCloud Drive (12 Kasım). Komut: `python -m study_tool.backup --dest "$HOME/Library/Mobile Documents/com~apple~CloudDocs/ai-tools-backups"`. Yerel yedek (`data/backups/`) de alınmaya devam eder. Alışkanlık: önemli bir işten (üretim, migration) önce ve seans sonunda iki yere de yedek.
 
 Elle geri yükleme (otomatik komut YOK):
 1. Quiz/generate gibi database kullanan komut çalışmıyor olmalı.
@@ -127,6 +127,7 @@ Sonra:
 - Quiz: `python -m study_tool.quiz data/QualityManagementWeek5.pdf 1 --user Sena`
 - Yönetim: `python -m study_tool.manage list | add-course AD | add-user AD | set-course PDF DERS | claim-attempts KULLANICI`
 - Export: `python -m study_tool.export_bank data/QualityManagementWeek5.pdf 1 data/export_ch1.json`
-- Yedek: `python -m study_tool.backup [--dest KLASÖR]`
+- Yedek (yerel): `python -m study_tool.backup`
+- Yedek (iCloud): `python -m study_tool.backup --dest "$HOME/Library/Mobile Documents/com~apple~CloudDocs/ai-tools-backups"`
 - Tüm komutlarda alternatif database için `--db YOL`.
 - Yeni bir ders/PDF için: `manage add-course` → `extract` → `generate ... --course "Ders"`.
