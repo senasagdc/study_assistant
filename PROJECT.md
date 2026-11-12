@@ -57,15 +57,17 @@ Asıl kayıt SQLite (`data/study.db`). JSON soru bankaları (`data/<pdf>_ch<N>_q
 - `study_tool/quiz.py`: PDF hash + chapter no ile chapter bulunur, `--user` zorunlu; her cevap geri bildirimden önce kaydedilir.
 - `study_tool/manage.py`: `add-course`, `add-user`, `set-course PDF DERS`, `claim-attempts KULLANICI` (kullanıcısız eski cevapları bağlar), `list`. Bir PDF başka derse bağlıysa taşınmaz (hata).
 - `study_tool/storage.py`: `connect_db`, migration'lar.
+- `study_tool/export_bank.py`: SQLite → JSON (her sorunun son sürümü), var olan dosyanın üzerine yazmaz.
+- `study_tool/backup.py`: tarihli, doğrulanmış database yedeği (`data/backups/`).
 - `core/llm.py`: Gemini (`gemini-3.5-flash-lite`), 429/503 retry.
 - `prompts/generate_questions.txt`: prompt; `{N_QUESTIONS}`, `{EXISTING_QUESTIONS}`, `{CHAPTER_TEXT}`.
-- `tests/`: 30 test (`unittest`). Gemini testlerde sahte `core.llm` modülüyle değiştirilir; API çağrısı yok.
+- `tests/`: 36 test (`unittest`). Gemini testlerde sahte `core.llm` modülüyle değiştirilir; API çağrısı yok.
 
 ## Katmanlar
 1. PDF → chapter JSON. TAMAM.
 2. Gemini ile soru üretimi. TAMAM (eksik: geçersiz JSON'da modele düzeltme retry'ı yok).
 3. Terminal quiz. TAMAM, SQLite'tan okur ve cevap kaydeder.
-4. SQLite. NEREDEYSE TAMAM: veri modeli, import, üretim kaydı, quiz kaydı, dersler ve kullanıcılar var. Eksik: JSON export, tarihli yedek/geri yükleme kontrolü.
+4. SQLite. KOD TAMAM: veri modeli, import, üretim kaydı, quiz kaydı, dersler/kullanıcılar, JSON export, doğrulanmış yedek. Export ve yedek gerçek database'de henüz çalıştırılmadı; bilgisayar dışı yedek konumu belirlenmedi.
 5. Streamlit arayüzü (slayt yükleme dahil), tekrar kuralı, konu bazlı zayıf nokta raporu.
 6. Bonus: embedding ile kavram arama. Şimdilik yapılmayacak.
 
@@ -90,12 +92,25 @@ Asıl kayıt SQLite (`data/study.db`). JSON soru bankaları (`data/<pdf>_ch<N>_q
 - Mevcut gerçek veri: 1 ders (Quality Management), 1 PDF, 1 chapter, 10 soru, 1 kullanıcı (Sena), 38 cevap.
 
 ## Bir sonraki adım
-DURUM: Ders ve kullanıcı yapısı Mac'te doğrulandı. Commit: `git add PROJECT.md CLAUDE.md study_tool/database_schema.sql study_tool/storage.py study_tool/manage.py study_tool/import_bank.py study_tool/generate.py study_tool/quiz.py tests/test_quiz.py tests/test_manage.py` ve `git commit -m "Dersler, kullanıcılar ve şema migration'ı"`.
+DURUM: Ders/kullanıcı yapısı commit edildi (103f2d4). SQLite'ın son adımı kullanıcının tam izniyle asistan tarafından yazıldı ve commit edildi; 36 test Mac'te (asistan, `.venv`, gerçek pymupdf) geçti. GERÇEK DATABASE ÜZERİNDE HENÜZ ÇALIŞTIRILMADI.
+- `study_tool/export_bank.py`: PDF (hash) + chapter için her sorunun son sürümünü, eklenme sırasıyla import'un okuduğu JSON listesi olarak yazar. JSON içindeki `id` ile `original_id` uyuşmazsa veya soru schema'dan geçmezse durur. Var olan dosyanın üzerine yazmaz (`os.link` ile atomik). Testler: export → boş DB'ye import → birebir aynı; son sürüm kullanılır; var olan dosya korunur.
+- `study_tool/backup.py`: kaynağı salt okunur (`mode=ro`) açar, `Connection.backup()` ile `data/backups/study_YYYY-MM-DD_HHMMSS.db` yazar; kopyada `PRAGMA integrity_check` = ok ve her tablonun satır sayısı asılla aynı olmalı, değilse kopya silinir. Var olan yedeğin üzerine yazmaz; olmayan database'i oluşturmaz. `--dest` ile başka klasör (ör. iCloud Drive) verilebilir.
 
-Sonra (kullanıcı commit'i getirdikten sonra, sırayla):
+Kullanıcının yapacakları (her komut ayrı):
+1. `python -m study_tool.backup` → `integrity_check: ok` ve tablo sayıları (beklenen: courses 1, users 1, documents 1, chapters 1, bank_questions 10, answer_attempts 38).
+2. `python -m study_tool.export_bank data/QualityManagementWeek5.pdf 1 data/export_ch1.json` → "10 soru yazıldı".
+3. (İsteğe bağlı) export'u var olan banka dosyasıyla karşılaştırma: `diff <(python -m json.tool data/export_ch1.json) <(python -m json.tool data/QualityManagementWeek5_ch1_questions.json)` → çıktı yoksa birebir aynı.
+4. Bilgisayar dışı yedek konumu kararı (iCloud Drive / Google Drive klasörü).
+
+Elle geri yükleme (otomatik komut YOK):
+1. Quiz/generate gibi database kullanan komut çalışmıyor olmalı.
+2. Mevcut hâli sakla: `cp data/study.db data/study_before_restore.db`
+3. Yedeği geri koy: `cp data/backups/study_YYYY-MM-DD_HHMMSS.db data/study.db`
+4. Kontrol: `python -m study_tool.manage list`
+
+Sonra:
+- SQLite aşaması BİTTİ sayılır → DUR ve dosyaları/veri akışını birlikte incele (Çalışma kuralları). Ardından açıklama → kodu gösterme → kullanıcının uygulaması düzeni.
 - (İsteğe bağlı, API onayıyla) yeni prompt'la gerçek üretim: `python -m study_tool.generate data/QualityManagementWeek5.json 1 5`. Kontrol: slayt örneği kopyası yok, eski sorulara anlamsal benzerlik yok, LaTeX `$...$` içinde ve tutarlı.
-- SQLite'ın son adımı (plan kullanıcı tarafından kabul edildi): (a) `study_tool/export_bank.py`: PDF+chapter (veya ders) için her sorunun son sürümünü import'un okuduğu JSON biçiminde dışa aktarır; test: export → boş DB'ye import → içerik birebir aynı. (b) `study_tool/backup.py`: `data/backups/study_YYYY-MM-DD_HHMM.db`, sqlite3 `Connection.backup()` ile; kopyada `PRAGMA integrity_check` ve tablo satır sayılarının asılla karşılaştırılması. Otomatik restore komutu YOK (gerçek DB'nin üzerine yazma riski); elle geri yükleme adımları PROJECT.md'ye yazılacak. Bilgisayar dışı yedek konumu (iCloud/Google Drive klasörü) kullanıcıya sorulacak.
-- Ardından DUR ve dosyaları/veri akışını birlikte incele (Çalışma kuralları).
 
 ## Sonraya bırakılan kararlar
 - TEKRAR KURALI (kullanıcı kararı, deployment sonrası): sorunun o kullanıcıya ait EN SON cevabı yanlışsa tekrar sorulur, doğruysa sorulmaz; hiç cevaplanmamış soru sorulur. answer_attempts'ten (user_id ile) hesaplanır; ek tablo gerekmez.
@@ -111,5 +126,7 @@ Sonra (kullanıcı commit'i getirdikten sonra, sırayla):
 - Üretim (API, onay gerekir): `python -m study_tool.generate data/QualityManagementWeek5.json 1 5 [--course "Ders"]`
 - Quiz: `python -m study_tool.quiz data/QualityManagementWeek5.pdf 1 --user Sena`
 - Yönetim: `python -m study_tool.manage list | add-course AD | add-user AD | set-course PDF DERS | claim-attempts KULLANICI`
+- Export: `python -m study_tool.export_bank data/QualityManagementWeek5.pdf 1 data/export_ch1.json`
+- Yedek: `python -m study_tool.backup [--dest KLASÖR]`
 - Tüm komutlarda alternatif database için `--db YOL`.
 - Yeni bir ders/PDF için: `manage add-course` → `extract` → `generate ... --course "Ders"`.
