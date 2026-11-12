@@ -100,7 +100,7 @@ Doğrulama komutları (yapıldı):
 1. `python -m study_tool.backup` → `integrity_check: ok` ve tablo sayıları (beklenen: courses 1, users 1, documents 1, chapters 1, bank_questions 10, answer_attempts 38).
 2. `python -m study_tool.export_bank data/QualityManagementWeek5.pdf 1 data/export_ch1.json` → "10 soru yazıldı".
 3. (İsteğe bağlı) export'u var olan banka dosyasıyla karşılaştırma: `diff <(python -m json.tool --sort-keys data/export_ch1.json) <(python -m json.tool --sort-keys data/QualityManagementWeek5_ch1_questions.json)` → çıktı yoksa birebir aynı.
-4. Bilgisayar dışı yedek konumu: KARAR iCloud Drive (12 Kasım). Komut: `python -m study_tool.backup --dest "$HOME/Library/Mobile Documents/com~apple~CloudDocs/ai-tools-backups"`. Yerel yedek (`data/backups/`) de alınmaya devam eder. Alışkanlık: önemli bir işten (üretim, migration) önce ve seans sonunda iki yere de yedek.
+4. Bilgisayar dışı yedek konumu: KARAR iCloud Drive (12 Kasım). Komut: `python -m study_tool.backup --dest "$HOME/Library/Mobile Documents/com~apple~CloudDocs/ai-tools-backups"`. İlk iCloud yedeği alındı ve doğrulandı: `study_2026-11-12_173741.db`, integrity ok, sayılar asılla aynı. Yerel yedek (`data/backups/`) de alınmaya devam eder. Alışkanlık: önemli bir işten (üretim, migration) önce ve seans sonunda iki yere de yedek.
 
 Elle geri yükleme (otomatik komut YOK):
 1. Quiz/generate gibi database kullanan komut çalışmıyor olmalı.
