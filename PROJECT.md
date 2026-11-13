@@ -59,10 +59,11 @@ Asıl kayıt SQLite (`data/study.db`). JSON soru bankaları (`data/<pdf>_ch<N>_q
 - `study_tool/storage.py`: `connect_db`, migration'lar.
 - `study_tool/export_bank.py`: SQLite → JSON (her sorunun son sürümü), var olan dosyanın üzerine yazmaz.
 - `study_tool/backup.py`: tarihli, doğrulanmış database yedeği (`data/backups/`).
+- `app.py`: Streamlit arayüzü. Her etkileşimde kısa ömürlü database bağlantısı; database yolu `STUDY_DB_PATH` ortam değişkeniyle değiştirilebilir. Quiz soru listesi oturum başında sabitlenir (tekrar modunda doğru cevaplanan soru oturum içinde kaybolmaz). Cevap, geri bildirimden önce kaydedilir. Kenar çubuğundan yeni kullanıcı eklenebilir.
 - `study_tool/stats.py`: `last_results` (kullanıcının her soruya son cevabı), `due_items` (tekrar kuralı), `topic_report` (konu bazlı zayıf nokta raporu). Sadece answer_attempts'ten hesaplanır; ek tablo yok.
 - `core/llm.py`: Gemini (`gemini-3.5-flash-lite`), 429/503 retry.
 - `prompts/generate_questions.txt`: prompt; `{N_QUESTIONS}`, `{EXISTING_QUESTIONS}`, `{CHAPTER_TEXT}`.
-- `tests/`: 40 test (`unittest`). Gemini testlerde sahte `core.llm` modülüyle değiştirilir; API çağrısı yok.
+- `tests/`: 43 test (`unittest`). Gemini testlerde sahte `core.llm` modülüyle değiştirilir; API çağrısı yok.
 
 ## Katmanlar
 1. PDF → chapter JSON. TAMAM.
@@ -94,8 +95,8 @@ Asıl kayıt SQLite (`data/study.db`). JSON soru bankaları (`data/<pdf>_ch<N>_q
 
 ## Bir sonraki adım
 13 KASIM BİTİŞ PLANI (kullanıcı onayladı; her adım sonunda dur ve onay al):
-1. Tekrar kuralı + zayıf konu hesabı (`stats.py`, quiz `--due`, `python -m study_tool.stats --user Sena`). YAZILDI, 40 test geçti; kullanıcı gerçek veride deneyecek.
-2. Streamlit kurulumu + quiz ekranı (`app.py`): kullanıcı/ders/PDF/chapter seçimi, tek tek soru, LaTeX, cevap kaydı, "sadece tekrar edilecekler".
+1. Tekrar kuralı + zayıf konu hesabı (`stats.py`, quiz `--due`, `python -m study_tool.stats --user Sena`). TAMAM (commit 6369666).
+2. Streamlit kurulumu + quiz ekranı (`app.py`): kullanıcı/ders/PDF/chapter seçimi, tek tek soru, LaTeX, cevap kaydı, "sadece tekrar edilecekler". YAZILDI: streamlit 1.67.0 `.venv`'e kuruldu ve requirements.txt'e eklendi; `.streamlit/config.toml` kullanım istatistiği göndermeyi kapatır. Testler: `tests/test_app.py` (Streamlit AppTest, tarayıcısız, 3 test); toplam 43 test geçti. Asistan demo database'iyle tarayıcıda denedi (LaTeX, geri bildirim çalışıyor). Kullanıcı gerçek veriyle `streamlit run app.py` deneyecek.
 3. Rapor ekranı (konu bazlı).
 4. PDF yükleme + chapter ayırma + soru üretimi (API, her tıklamada açık onay).
 5. requirements.txt, README, PROJECT.md son hâli, kısa ortak inceleme.
@@ -132,6 +133,7 @@ Sonra:
 - Soru düzeltme fonksiyonu (yeni question_version ekleyerek).
 
 ## Komutlar (proje kökünden, `.venv` aktif)
+- Arayüz: `streamlit run app.py` (tarayıcıda http://localhost:8501 açılır; durdurmak için terminalde Ctrl+C)
 - Testler: `python -m unittest discover -s tests -v`
 - PDF → chapter JSON: `python -m study_tool.extract data/<pdf>.pdf`
 - Import: `python -m study_tool.import_bank data/QualityManagementWeek5.pdf data/QualityManagementWeek5.json 1 data/QualityManagementWeek5_ch1_questions.json [--course "Ders"]`

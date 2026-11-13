@@ -14,3 +14,6 @@ __pycache__/
 # Mac ve Jupyter artıkları
 .DS_Store
 .ipynb_checkpoints/
+
+# Claude Code yerel ayarları
+.claude/
