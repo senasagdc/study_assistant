@@ -7,6 +7,7 @@ from pathlib import Path
 from study_tool.manage import get_user_id
 from study_tool.schema import OPTION_KEYS, validate_question
 from study_tool.storage import DEFAULT_DB_PATH, connect_db
+from study_tool.stats import due_items
 
 
 def find_chapter(connection, pdf_path, chapter_no):
@@ -112,6 +113,8 @@ def main():
     parser.add_argument("pdf", type=Path, help="Chapter'ın ait olduğu PDF")
     parser.add_argument("chapter", type=int)
     parser.add_argument("--user", required=True, help="Cevapların kaydedileceği kullanıcı")
+    parser.add_argument("--due", action="store_true",
+                        help="Yalnızca son cevabı yanlış olan veya hiç cevaplanmamış sorular")
     parser.add_argument("--db", type=Path, default=DEFAULT_DB_PATH)
     args = parser.parse_args()
     if not args.db.is_file():
@@ -121,6 +124,12 @@ def main():
         user_id = get_user_id(connection, args.user)
         chapter_id = find_chapter(connection, args.pdf, args.chapter)
         items = load_chapter_questions(connection, chapter_id)
+        if args.due:
+            items = due_items(connection, items, user_id)
+            print(f"Tekrar edilecek soru: {len(items)}")
+            if not items:
+                print("Bu chapter'da tekrar edilecek soru yok; tüm son cevaplar doğru.")
+                return
         run_quiz(connection, items, user_id)
     except (OSError, ValueError, sqlite3.Error) as error:
         parser.exit(1, f"Quiz başlatılamadı: {error}\n")

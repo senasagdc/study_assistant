@@ -1,4 +1,4 @@
-# PROJECT.md (güncel durum: 12 Kasım 2026)
+# PROJECT.md (güncel durum: 13 Kasım 2026)
 
 > AI asistana not: Bu dosya araçtan bağımsız proje bağlamıdır. Aşağıdaki kurallara uy ve "Bir sonraki adım" bölümünden devam et. Araç değişebilir (ChatGPT Codex, Claude, Claude Code vb.). 12 Kasım 2026'da çalışma Claude (sohbet) üzerinden Claude Code'a devredildi.
 
@@ -59,16 +59,17 @@ Asıl kayıt SQLite (`data/study.db`). JSON soru bankaları (`data/<pdf>_ch<N>_q
 - `study_tool/storage.py`: `connect_db`, migration'lar.
 - `study_tool/export_bank.py`: SQLite → JSON (her sorunun son sürümü), var olan dosyanın üzerine yazmaz.
 - `study_tool/backup.py`: tarihli, doğrulanmış database yedeği (`data/backups/`).
+- `study_tool/stats.py`: `last_results` (kullanıcının her soruya son cevabı), `due_items` (tekrar kuralı), `topic_report` (konu bazlı zayıf nokta raporu). Sadece answer_attempts'ten hesaplanır; ek tablo yok.
 - `core/llm.py`: Gemini (`gemini-3.5-flash-lite`), 429/503 retry.
 - `prompts/generate_questions.txt`: prompt; `{N_QUESTIONS}`, `{EXISTING_QUESTIONS}`, `{CHAPTER_TEXT}`.
-- `tests/`: 36 test (`unittest`). Gemini testlerde sahte `core.llm` modülüyle değiştirilir; API çağrısı yok.
+- `tests/`: 40 test (`unittest`). Gemini testlerde sahte `core.llm` modülüyle değiştirilir; API çağrısı yok.
 
 ## Katmanlar
 1. PDF → chapter JSON. TAMAM.
 2. Gemini ile soru üretimi. TAMAM (eksik: geçersiz JSON'da modele düzeltme retry'ı yok).
 3. Terminal quiz. TAMAM, SQLite'tan okur ve cevap kaydeder.
 4. SQLite. TAMAM (12 Kasım): veri modeli, import, üretim kaydı, quiz kaydı, dersler/kullanıcılar, JSON export, doğrulanmış yedek; gerçek database'de doğrulandı. Bilgisayar dışı yedek: iCloud Drive (`~/Library/Mobile Documents/com~apple~CloudDocs/ai-tools-backups`, `--dest` ile).
-5. Streamlit arayüzü (slayt yükleme dahil), tekrar kuralı, konu bazlı zayıf nokta raporu.
+5. Streamlit arayüzü (slayt yükleme dahil), tekrar kuralı, konu bazlı zayıf nokta raporu. DEVAM EDİYOR (13 Kasım): tekrar kuralı ve rapor hesabı TAMAM (`stats.py`, quiz `--due`).
 6. Bonus: embedding ile kavram arama. Şimdilik yapılmayacak.
 
 ## Çalışma kuralları
@@ -82,7 +83,7 @@ Asıl kayıt SQLite (`data/study.db`). JSON soru bankaları (`data/<pdf>_ch<N>_q
 - Terminale verilen komutlarda `#` yorum satırı olmasın (zsh `parse error near ')'` veriyor). Her komut ayrı kod bloğunda.
 - Anahtarlar .env içinde; .env ve data/ Git dışında. Anahtarlar sohbete yapıştırılmaz. Asistan .env ve data/ İÇERİĞİNİ okumaz veya göndermez (sayı/etiket gösteren sorguları kullanıcı çalıştırır).
 - Gemini API çağrısı (generate komutu) chapter metnini dışarı gönderir: HER gerçek üretimden önce kullanıcı onayı alınır. Testler ve quiz API kullanmaz.
-- SQLite aşaması bitince açıkça DUR: dosyaları ve veri akışını kullanıcıyla birlikte incele; ardından açıklama → kodu gösterme → kullanıcının uygulaması düzenine dön. Yeni özellik için otomatik kod değişikliği yapma.
+- 13 Kasım KULLANICI KARARI (önceki "SQLite bitince dur, kullanıcı uygular" kuralının yerine): projeyi asistan bitirir. Plan 6 adım; her adım orta büyüklükte. Asistan adımı yazar, testleri çalıştırır, commit eder, sonra DURUR ve bilgilendirir; kullanıcı onaylayınca sonraki adıma geçer. Yeni kavramlar yine kısaca öğretilir. API onayı ve .env/data/ kuralları aynen geçerli.
 
 ## Doğrulanmış geçmiş (özet)
 - 11 Kasım: 14 test Mac'te geçti; gerçek import doğrulandı (QualityManagementWeek5 ch1, 5 soru), tekrar import idempotent.
@@ -92,6 +93,17 @@ Asıl kayıt SQLite (`data/study.db`). JSON soru bankaları (`data/<pdf>_ch<N>_q
 - Mevcut gerçek veri: 1 ders (Quality Management), 1 PDF, 1 chapter, 10 soru, 1 kullanıcı (Sena), 38 cevap.
 
 ## Bir sonraki adım
+13 KASIM BİTİŞ PLANI (kullanıcı onayladı; her adım sonunda dur ve onay al):
+1. Tekrar kuralı + zayıf konu hesabı (`stats.py`, quiz `--due`, `python -m study_tool.stats --user Sena`). YAZILDI, 40 test geçti; kullanıcı gerçek veride deneyecek.
+2. Streamlit kurulumu + quiz ekranı (`app.py`): kullanıcı/ders/PDF/chapter seçimi, tek tek soru, LaTeX, cevap kaydı, "sadece tekrar edilecekler".
+3. Rapor ekranı (konu bazlı).
+4. PDF yükleme + chapter ayırma + soru üretimi (API, her tıklamada açık onay).
+5. requirements.txt, README, PROJECT.md son hâli, kısa ortak inceleme.
+6. (İsteğe bağlı, başka gün olabilir) Deployment: Streamlit Cloud + hosted DB; kullanıcı hesap açar.
+
+Tekrar kuralı ayrıntısı: sürümler aynı sorunun parçası sayılır (soru düzeltilince geçmiş sıfırlanmaz); son cevap answer_attempts.id sırasıyla belirlenir; her kullanıcı ayrı. Konu adları büyük/küçük harf ve boşluk farkı yok sayılarak gruplanır; LLM'in farklı yazdığı aynı konular (ör. "Control charts" / "X-bar charts") ayrı görünür.
+
+ÖNCEKİ DURUM (12 Kasım):
 DURUM: Ders/kullanıcı yapısı commit edildi (103f2d4). SQLite'ın son adımı kullanıcının tam izniyle asistan tarafından yazıldı ve commit edildi; 36 test Mac'te (asistan, `.venv`, gerçek pymupdf) geçti. 12 Kasım KULLANICI DOĞRULADI: `backup` → `data/backups/study_2026-11-12_173549.db`, integrity ok, sayılar asılla aynı (answer_attempts 38, bank_questions 10, question_versions 10, generations 2, chapters 1, documents 1, courses 1, users 1; eski prototip tablolar 0). `export_bank` → `data/export_ch1.json`, 10 soru. SQLite AŞAMASI TAMAM.
 - `study_tool/export_bank.py`: PDF (hash) + chapter için her sorunun son sürümünü, eklenme sırasıyla import'un okuduğu JSON listesi olarak yazar. JSON içindeki `id` ile `original_id` uyuşmazsa veya soru schema'dan geçmezse durur. Var olan dosyanın üzerine yazmaz (`os.link` ile atomik). Testler: export → boş DB'ye import → birebir aynı; son sürüm kullanılır; var olan dosya korunur.
 - `study_tool/backup.py`: kaynağı salt okunur (`mode=ro`) açar, `Connection.backup()` ile `data/backups/study_YYYY-MM-DD_HHMMSS.db` yazar; kopyada `PRAGMA integrity_check` = ok ve her tablonun satır sayısı asılla aynı olmalı, değilse kopya silinir. Var olan yedeğin üzerine yazmaz; olmayan database'i oluşturmaz. `--dest` ile başka klasör (ör. iCloud Drive) verilebilir.
@@ -113,7 +125,7 @@ Sonra:
 - (İsteğe bağlı, API onayıyla) yeni prompt'la gerçek üretim: `python -m study_tool.generate data/QualityManagementWeek5.json 1 5`. Kontrol: slayt örneği kopyası yok, eski sorulara anlamsal benzerlik yok, LaTeX `$...$` içinde ve tutarlı.
 
 ## Sonraya bırakılan kararlar
-- TEKRAR KURALI (kullanıcı kararı, deployment sonrası): sorunun o kullanıcıya ait EN SON cevabı yanlışsa tekrar sorulur, doğruysa sorulmaz; hiç cevaplanmamış soru sorulur. answer_attempts'ten (user_id ile) hesaplanır; ek tablo gerekmez.
+- TEKRAR KURALI (13 Kasım'da uygulandı, `stats.py`): sorunun o kullanıcıya ait EN SON cevabı yanlışsa tekrar sorulur, doğruysa sorulmaz; hiç cevaplanmamış soru sorulur. answer_attempts'ten (user_id ile) hesaplanır; ek tablo gerekmez.
 - HOSTED DATABASE (deployment adımında karar): kullanıcı birkaç arkadaşıyla kullanacak; Streamlit Cloud'da yerel SQLite dosyası kalıcı olmayabilir. 12 Kasım araştırması: Turso (SQLite uyumlu, kod en az değişir; ücretsiz 100 DB, 5 GB; Turso'nun Supabase'e katıldığı duyuruldu, koşullar tekrar kontrol edilmeli), Neon (PostgreSQL, ücretsiz proje başına 1 GB, 5 dk sonra uyur ve hızlı uyanır), Supabase (PostgreSQL, 500 MB, 1 hafta kullanılmazsa durdurulur). Ön eğilim: Turso. O zamana kadar veri tarihli yedekle korunur.
 - Mixed/final exam: `documents.week` ve `course_id` üzerinden hafta/ders seçimi. Arayüz aşamasında.
 - Geçersiz JSON'da modelden düzeltme isteyen retry.
@@ -124,7 +136,8 @@ Sonra:
 - PDF → chapter JSON: `python -m study_tool.extract data/<pdf>.pdf`
 - Import: `python -m study_tool.import_bank data/QualityManagementWeek5.pdf data/QualityManagementWeek5.json 1 data/QualityManagementWeek5_ch1_questions.json [--course "Ders"]`
 - Üretim (API, onay gerekir): `python -m study_tool.generate data/QualityManagementWeek5.json 1 5 [--course "Ders"]`
-- Quiz: `python -m study_tool.quiz data/QualityManagementWeek5.pdf 1 --user Sena`
+- Quiz: `python -m study_tool.quiz data/QualityManagementWeek5.pdf 1 --user Sena [--due]`
+- Zayıf konu raporu: `python -m study_tool.stats --user Sena [--course "Ders"]`
 - Yönetim: `python -m study_tool.manage list | add-course AD | add-user AD | set-course PDF DERS | claim-attempts KULLANICI`
 - Export: `python -m study_tool.export_bank data/QualityManagementWeek5.pdf 1 data/export_ch1.json`
 - Yedek (yerel): `python -m study_tool.backup`
