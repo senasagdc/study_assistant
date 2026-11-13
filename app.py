@@ -11,7 +11,7 @@ import streamlit as st
 
 from study_tool.manage import add_user
 from study_tool.quiz import load_chapter_questions, record_answer
-from study_tool.stats import due_items
+from study_tool.stats import due_items, topic_report
 from study_tool.storage import DEFAULT_DB_PATH, connect_db
 
 DB_PATH = Path(os.environ.get("STUDY_DB_PATH", DEFAULT_DB_PATH))
@@ -79,7 +79,7 @@ def sidebar(conn):
         "Sorular", ["Tekrar edilecekler", "Hepsi"], key="mode",
         help="Tekrar edilecekler: son cevabın yanlış olan veya hiç cevaplamadığın sorular.",
     ) == "Tekrar edilecekler"
-    return user_id, chapter_id, due_only
+    return user_id, course_id, chapter_id, due_only
 
 
 def start_session(conn, user_id, chapter_id, due_only):
@@ -173,13 +173,59 @@ def quiz_page(conn, user_id, chapter_id, due_only):
     st.caption(f"Bu oturumda: {quiz['correct']} doğru / {quiz['answered']} cevap")
 
 
+def report_page(conn, user_id, course_id, chapter_id):
+    if user_id is None:
+        st.info("Rapor için soldan bir kullanıcı seç.")
+        return
+    scopes = {"Tüm dersler": dict()}
+    if course_id:   # 0 = derssiz PDF'ler; ders filtresi anlamsız
+        scopes = {"Seçili ders": dict(course_id=course_id), **scopes}
+    if chapter_id is not None:
+        scopes = {"Seçili chapter": dict(chapter_id=chapter_id), **scopes}
+    scope = st.radio("Kapsam", list(scopes), horizontal=True, key="report_scope")
+    rows = topic_report(conn, user_id, **scopes[scope])
+    if not rows:
+        st.info("Bu kapsamda soru yok.")
+        return
+
+    attempts = sum(r["attempts"] for r in rows)
+    correct = sum(r["correct"] for r in rows)
+    columns = st.columns(4)
+    columns[0].metric("Soru", sum(r["questions"] for r in rows))
+    columns[1].metric("Başarı (tüm denemeler)", f"%{100 * correct / attempts:.0f}" if attempts else "–")
+    columns[2].metric("Şu an yanlış", sum(r["wrong_now"] for r in rows))
+    columns[3].metric("Hiç cevaplanmadı", sum(r["unanswered"] for r in rows))
+
+    weak = [r["topic"] for r in rows if r["wrong_now"]][:3]
+    if weak:
+        st.warning("Önce tekrar et: " + ", ".join(weak))
+
+    st.dataframe(
+        [
+            {"Konu": r["topic"], "Başarı": r["accuracy"], "Doğru": r["correct"],
+             "Deneme": r["attempts"], "Şu an yanlış": r["wrong_now"],
+             "Hiç cevaplanmadı": r["unanswered"], "Soru": r["questions"]}
+            for r in rows
+        ],
+        hide_index=True, width="stretch",
+        column_config={"Başarı": st.column_config.ProgressColumn(
+            "Başarı", format="percent", min_value=0, max_value=1)},
+    )
+    st.caption("En zayıf konu en üstte. Başarı, o konudaki tüm denemelerin doğru oranıdır; "
+               "\"Şu an yanlış\", son cevabı yanlış olan soru sayısıdır.")
+
+
 def main():
     st.set_page_config(page_title="Soru ve Tekrar", page_icon="📘")
     st.title("Soru ve Tekrar")
     conn = open_db()
     try:
-        user_id, chapter_id, due_only = sidebar(conn)
-        quiz_page(conn, user_id, chapter_id, due_only)
+        user_id, course_id, chapter_id, due_only = sidebar(conn)
+        quiz_tab, report_tab = st.tabs(["Quiz", "Rapor"])
+        with quiz_tab:
+            quiz_page(conn, user_id, chapter_id, due_only)
+        with report_tab:
+            report_page(conn, user_id, course_id, chapter_id)
     except ValueError as error:
         st.error(f"Sorular yüklenemedi: {error}")
     finally:

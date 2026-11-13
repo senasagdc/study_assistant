@@ -63,7 +63,7 @@ Asıl kayıt SQLite (`data/study.db`). JSON soru bankaları (`data/<pdf>_ch<N>_q
 - `study_tool/stats.py`: `last_results` (kullanıcının her soruya son cevabı), `due_items` (tekrar kuralı), `topic_report` (konu bazlı zayıf nokta raporu). Sadece answer_attempts'ten hesaplanır; ek tablo yok.
 - `core/llm.py`: Gemini (`gemini-3.5-flash-lite`), 429/503 retry.
 - `prompts/generate_questions.txt`: prompt; `{N_QUESTIONS}`, `{EXISTING_QUESTIONS}`, `{CHAPTER_TEXT}`.
-- `tests/`: 43 test (`unittest`). Gemini testlerde sahte `core.llm` modülüyle değiştirilir; API çağrısı yok.
+- `tests/`: 45 test (`unittest`). Gemini testlerde sahte `core.llm` modülüyle değiştirilir; API çağrısı yok.
 
 ## Katmanlar
 1. PDF → chapter JSON. TAMAM.
@@ -96,8 +96,10 @@ Asıl kayıt SQLite (`data/study.db`). JSON soru bankaları (`data/<pdf>_ch<N>_q
 ## Bir sonraki adım
 13 KASIM BİTİŞ PLANI (kullanıcı onayladı; her adım sonunda dur ve onay al):
 1. Tekrar kuralı + zayıf konu hesabı (`stats.py`, quiz `--due`, `python -m study_tool.stats --user Sena`). TAMAM (commit 6369666).
-2. Streamlit kurulumu + quiz ekranı (`app.py`): kullanıcı/ders/PDF/chapter seçimi, tek tek soru, LaTeX, cevap kaydı, "sadece tekrar edilecekler". YAZILDI: streamlit 1.67.0 `.venv`'e kuruldu ve requirements.txt'e eklendi; `.streamlit/config.toml` kullanım istatistiği göndermeyi kapatır. Testler: `tests/test_app.py` (Streamlit AppTest, tarayıcısız, 3 test); toplam 43 test geçti. Asistan demo database'iyle tarayıcıda denedi (LaTeX, geri bildirim çalışıyor). Kullanıcı gerçek veriyle `streamlit run app.py` deneyecek.
-3. Rapor ekranı (konu bazlı).
+2. Streamlit kurulumu + quiz ekranı (`app.py`): kullanıcı/ders/PDF/chapter seçimi, tek tek soru, LaTeX, cevap kaydı, "sadece tekrar edilecekler". YAZILDI: streamlit 1.67.0 `.venv`'e kuruldu ve requirements.txt'e eklendi; `.streamlit/config.toml` kullanım istatistiği göndermeyi kapatır. Testler: `tests/test_app.py` (Streamlit AppTest, tarayıcısız, 3 test); toplam 43 test geçti. Asistan demo database'iyle tarayıcıda denedi (LaTeX, geri bildirim çalışıyor). TAMAM (commit f3c62a8).
+3. Rapor ekranı (konu bazlı). TAMAM (13 Kasım): "Quiz" ve "Rapor" sekmeleri. Rapor kapsamı: seçili chapter / seçili ders / tüm dersler. Özet metrikler (soru, başarı, şu an yanlış, hiç cevaplanmadı), "Önce tekrar et" uyarısı (son cevabı yanlış en zayıf 3 konu), konu tablosu (başarı çubuğu). 2 yeni AppTest; toplam 45 test geçti. Demo veriyle tarayıcıda kontrol edildi.
+   KULLANICI HENÜZ GERÇEK VERİYLE DENEMEDİ: `streamlit run app.py`.
+   SEANS 13 KASIM'DA 3. ADIMDAN SONRA KULLANICI İSTEĞİYLE DURDU. Devam: 4. adım.
 4. PDF yükleme + chapter ayırma + soru üretimi (API, her tıklamada açık onay).
 5. requirements.txt, README, PROJECT.md son hâli, kısa ortak inceleme.
 6. (İsteğe bağlı, başka gün olabilir) Deployment: Streamlit Cloud + hosted DB; kullanıcı hesap açar.

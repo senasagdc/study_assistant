@@ -101,6 +101,25 @@ class AppTests(unittest.TestCase):
         self.assertEqual(db.execute("SELECT name FROM users ORDER BY name").fetchall(),
                          [("Ali",), ("Sena",)])
 
+    def test_report_tab_shows_weakest_topic_first(self):
+        app = self.run_app()
+        self.answer(app, "C")          # First? yanlış
+        app.button[0].click().run()
+        self.answer(app, "A")          # Second? doğru
+        report = self.run_app()
+        self.assertEqual([m.value for m in report.metric], ["2", "%50", "1", "0"])
+        self.assertIn("Demo", report.warning[0].value)
+        table = report.dataframe[0].value
+        self.assertEqual(list(table["Konu"]), ["Demo"])
+        self.assertEqual(list(table["Deneme"]), [2])
+        report.radio(key="report_scope").set_value("Tüm dersler").run()
+        self.assertFalse(report.exception)
+
+    def test_report_without_answers_shows_unanswered(self):
+        report = self.run_app()
+        self.assertEqual([m.value for m in report.metric], ["2", "–", "0", "2"])
+        self.assertEqual(len(report.warning), 0)
+
 
 if __name__ == "__main__":
     unittest.main()
